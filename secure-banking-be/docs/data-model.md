@@ -1,6 +1,6 @@
 # Data model
 
-PostgreSQL, database-per-service. Tenant-aware tables always include `tenant_id`.
+PostgreSQL, database-per-service. Tenant-aware tables always include `tenant_id`. Flyway scripts: `services/*/src/main/resources/db/migration/V1__init_*.sql`. Init of databases: `infra/postgres/init.sql`.
 
 ## customer_db.customers
 

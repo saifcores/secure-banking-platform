@@ -1,8 +1,12 @@
 # Architecture
 
+Documentation index: [README.md](README.md).
+
 ## Positioning
 
 This is a secure multi-tenant banking platform demonstrating OAuth2/OIDC, IAM, financial transaction processing, idempotency, ledger, event-driven architecture and service-to-service security.
+
+The **backend** (`secure-banking-be`) is implemented. The **frontend** (`secure-banking-fe`) is a Vite + React scaffold intended as the `banking-frontend` PKCE client; it is not wired to Keycloak or the gateway yet. Until then, use curl / Swagger as in [demos.md](demos.md).
 
 ## Directing principle
 
@@ -50,13 +54,13 @@ Every write path on a financial resource walks this chain. Skipping a step is a 
 
 ## Service boundaries
 
-| Service | Owns | Does not own |
-| --- | --- | --- |
-| Customer | profiles, user↔customer link | balances |
-| Account | accounts, balances, status, atomic money movement | transfer lifecycle |
-| Transaction | orchestration, state machine, ledger, idempotency, outbox | raw balances |
-| Audit | immutable trail | business decisions |
-| Gateway | edge concerns | domain rules |
+| Service     | Owns                                                      | Does not own       |
+| ----------- | --------------------------------------------------------- | ------------------ |
+| Customer    | profiles, user↔customer link                              | balances           |
+| Account     | accounts, balances, status, atomic money movement         | transfer lifecycle |
+| Transaction | orchestration, state machine, ledger, idempotency, outbox | raw balances       |
+| Audit       | immutable trail                                           | business decisions |
+| Gateway     | edge concerns                                             | domain rules       |
 
 ## Financial write path
 
@@ -76,3 +80,7 @@ Retries after step 7 cannot double-spend: both services key money movement on `I
 ## Database strategy
 
 Database-per-service on a shared PostgreSQL instance (separate databases). All tenant-aware tables have `tenant_id`. Hibernate filters enforce isolation on list queries; get-by-id bypasses the filter then applies `TenantGuard` so cross-tenant access returns `403 TENANT_ACCESS_DENIED`.
+
+## Shared libraries
+
+See [modules.md](modules.md). `common-domain` holds rules and the RBAC matrix with no Spring. `common-security` binds JWT, tenant, and Hibernate. `common-web` standardises errors, correlation ids, and HTTP metrics.

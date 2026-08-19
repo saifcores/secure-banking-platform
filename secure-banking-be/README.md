@@ -123,10 +123,17 @@ Critical coverage:
 
 ## Documentation
 
+Full index: [docs/README.md](docs/README.md). Platform overview: [../README.md](../README.md).
+
 | Topic               | File                                                   |
 | ------------------- | ------------------------------------------------------ |
+| Doc index           | [docs/README.md](docs/README.md)                       |
+| Glossary            | [docs/glossary.md](docs/glossary.md)                   |
 | Global architecture | [docs/architecture.md](docs/architecture.md)           |
 | C4                  | [docs/c4.md](docs/c4.md)                               |
+| Maven modules       | [docs/modules.md](docs/modules.md)                     |
+| HTTP API            | [docs/api.md](docs/api.md)                             |
+| Error catalog       | [docs/errors.md](docs/errors.md)                       |
 | Sequence diagrams   | [docs/sequence-diagrams.md](docs/sequence-diagrams.md) |
 | Data model          | [docs/data-model.md](docs/data-model.md)               |
 | OAuth2 flows        | [docs/oauth2-flows.md](docs/oauth2-flows.md)           |
@@ -134,6 +141,11 @@ Critical coverage:
 | Multi-tenancy       | [docs/multi-tenancy.md](docs/multi-tenancy.md)         |
 | Idempotence         | [docs/idempotence.md](docs/idempotence.md)             |
 | Resilience          | [docs/resilience.md](docs/resilience.md)               |
+| Local development   | [docs/local-development.md](docs/local-development.md) |
+| Configuration       | [docs/configuration.md](docs/configuration.md)         |
+| Observability       | [docs/observability.md](docs/observability.md)         |
+| Testing             | [docs/testing.md](docs/testing.md)                     |
+| Deployment          | [docs/deployment.md](docs/deployment.md)               |
 | Demo scripts        | [docs/demos.md](docs/demos.md)                         |
 
 ## Kubernetes
