@@ -1,0 +1,224 @@
+name: secure-banking
+
+x-app-environment: &app-environment
+  DB_USERNAME: banking
+  DB_PASSWORD: banking
+  KEYCLOAK_ISSUER: http://host.docker.internal:8085/realms/banking
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  JAVA_OPTS: -XX:+UseContainerSupport -XX:MaxRAMPercentage=75
+
+x-app-build: &app-build
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    keycloak:
+      condition: service_started
+    kafka:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: banking
+      KC_DB_PASSWORD: banking
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8085
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+    ports:
+      - "8085:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9092:9092"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      - kafka
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    command: ["--config=/etc/otel-collector.yml"]
+    volumes:
+      - ./infra/otel/otel-collector.yml:/etc/otel-collector.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api-gateway
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  api-gateway:
+    <<: *app-build
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      args:
+        JAR: services/api-gateway/target/api-gateway-1.0.0-SNAPSHOT.jar
+    environment:
+      <<: *app-environment
+      SERVER_PORT: 8080
+      REDIS_HOST: redis
+      CUSTOMER_SERVICE_URL: http://customer-service:8081
+      ACCOUNT_SERVICE_URL: http://account-service:8082
+      TRANSACTION_SERVICE_URL: http://transaction-service:8083
+      AUDIT_SERVICE_URL: http://audit-service:8084
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+      customer-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+
+  customer-service:
+    <<: *app-build
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      args:
+        JAR: services/customer-service/target/customer-service-1.0.0-SNAPSHOT.jar
+    environment:
+      <<: *app-environment
+      SERVER_PORT: 8081
+      CUSTOMER_DB_URL: jdbc:postgresql://postgres:5432/customer_db
+    ports:
+      - "8081:8081"
+
+  account-service:
+    <<: *app-build
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      args:
+        JAR: services/account-service/target/account-service-1.0.0-SNAPSHOT.jar
+    environment:
+      <<: *app-environment
+      SERVER_PORT: 8082
+      ACCOUNT_DB_URL: jdbc:postgresql://postgres:5432/account_db
+    ports:
+      - "8082:8082"
+
+  transaction-service:
+    <<: *app-build
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      args:
+        JAR: services/transaction-service/target/transaction-service-1.0.0-SNAPSHOT.jar
+    environment:
+      <<: *app-environment
+      SERVER_PORT: 8083
+      TRANSACTION_DB_URL: jdbc:postgresql://postgres:5432/transaction_db
+      ACCOUNT_SERVICE_URL: http://account-service:8082
+      TRANSACTION_SERVICE_CLIENT_ID: transaction-service
+      TRANSACTION_SERVICE_CLIENT_SECRET: transaction-service-secret
+    ports:
+      - "8083:8083"
+    depends_on:
+      account-service:
+        condition: service_started
+
+  audit-service:
+    <<: *app-build
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      args:
+        JAR: services/audit-service/target/audit-service-1.0.0-SNAPSHOT.jar
+    environment:
+      <<: *app-environment
+      SERVER_PORT: 8084
+      AUDIT_DB_URL: jdbc:postgresql://postgres:5432/audit_db
+    ports:
+      - "8084:8084"
+
+volumes:
+  postgres-data:
