@@ -1,0 +1,90 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: transaction-service
+  datasource:
+    url: ${TRANSACTION_DB_URL:jdbc:postgresql://localhost:5432/transaction_db}
+    username: ${DB_USERNAME:banking}
+    password: ${DB_PASSWORD:banking}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8085/realms/banking}
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${TRANSACTION_SERVICE_CLIENT_ID:transaction-service}
+            client-secret: ${TRANSACTION_SERVICE_CLIENT_SECRET:transaction-service-secret}
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8085/realms/banking}
+
+banking:
+  account-service:
+    base-url: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      accountService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  retry:
+    instances:
+      accountService:
+        maxAttempts: 3
+        waitDuration: 200ms
+        retryExceptions:
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - java.util.concurrent.TimeoutException
+  timelimiter:
+    instances:
+      accountService:
+        timeoutDuration: 3s
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} trace=%X{traceId:-} span=%X{spanId:-} tenant=%X{tenantId:-} user=%X{userId:-} service=${spring.application.name} %5p %m%n"
