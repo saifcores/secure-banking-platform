@@ -1,0 +1,175 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+  namespace: secure-banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+    spec:
+      containers:
+        - name: customer-service
+          image: securebank/customer-service:1.0.0
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: banking-config
+            - secretRef:
+                name: banking-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8081"
+            - name: CUSTOMER_DB_URL
+              value: jdbc:postgresql://postgres:5432/customer_db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-service
+  namespace: secure-banking
+spec:
+  selector:
+    app: customer-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: secure-banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: securebank/account-service:1.0.0
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: banking-config
+            - secretRef:
+                name: banking-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+            - name: ACCOUNT_DB_URL
+              value: jdbc:postgresql://postgres:5432/account_db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+  namespace: secure-banking
+spec:
+  selector:
+    app: account-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+  namespace: secure-banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: transaction-service
+          image: securebank/transaction-service:1.0.0
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: banking-config
+            - secretRef:
+                name: banking-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: TRANSACTION_DB_URL
+              value: jdbc:postgresql://postgres:5432/transaction_db
+            - name: ACCOUNT_SERVICE_URL
+              value: http://account-service:8082
+            - name: TRANSACTION_SERVICE_CLIENT_ID
+              value: transaction-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+  namespace: secure-banking
+spec:
+  selector:
+    app: transaction-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-service
+  namespace: secure-banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-service
+  template:
+    metadata:
+      labels:
+        app: audit-service
+    spec:
+      containers:
+        - name: audit-service
+          image: securebank/audit-service:1.0.0
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: banking-config
+            - secretRef:
+                name: banking-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8084"
+            - name: AUDIT_DB_URL
+              value: jdbc:postgresql://postgres:5432/audit_db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+  namespace: secure-banking
+spec:
+  selector:
+    app: audit-service
+  ports:
+    - port: 8084
+      targetPort: 8084

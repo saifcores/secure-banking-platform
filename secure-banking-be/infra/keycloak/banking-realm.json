@@ -1,0 +1,177 @@
+{
+  "id": "banking",
+  "realm": "banking",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "roles": {
+    "realm": [
+      { "name": "CUSTOMER", "description": "Bank customer" },
+      { "name": "OPERATOR", "description": "Bank operator" },
+      { "name": "SUPPORT", "description": "Support agent" },
+      { "name": "AUDITOR", "description": "Audit reader" },
+      { "name": "ADMIN", "description": "Platform administrator" },
+      { "name": "SERVICE", "description": "Service-to-service account" }
+    ]
+  },
+  "defaultDefaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "roles",
+    "email",
+    "tenant"
+  ],
+  "clientScopes": [
+    {
+      "name": "tenant",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "banking-frontend",
+      "name": "Banking Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "http://localhost:3000/*",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email", "tenant"],
+      "optionalClientScopes": ["address", "phone", "offline_access"]
+    },
+    {
+      "clientId": "banking-api",
+      "name": "Banking API",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "banking-api-secret",
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "bearerOnly": false,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "email", "tenant"]
+    },
+    {
+      "clientId": "transaction-service",
+      "name": "Transaction Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "transaction-service-secret",
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "email", "tenant"]
+    }
+  ],
+  "users": [
+    {
+      "username": "awa.diop",
+      "enabled": true,
+      "email": "awa.diop@bank-dakar.local",
+      "emailVerified": true,
+      "firstName": "Awa",
+      "lastName": "Diop",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["CUSTOMER"],
+      "attributes": { "tenant_id": ["BANK_DAKAR"] }
+    },
+    {
+      "username": "koffi.yao",
+      "enabled": true,
+      "email": "koffi.yao@bank-abidjan.local",
+      "emailVerified": true,
+      "firstName": "Koffi",
+      "lastName": "Yao",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["CUSTOMER"],
+      "attributes": { "tenant_id": ["BANK_ABIDJAN"] }
+    },
+    {
+      "username": "mamadou.ndiaye",
+      "enabled": true,
+      "email": "mamadou.ndiaye@bank-dakar.local",
+      "emailVerified": true,
+      "firstName": "Mamadou",
+      "lastName": "Ndiaye",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["OPERATOR"],
+      "attributes": { "tenant_id": ["BANK_DAKAR"] }
+    },
+    {
+      "username": "support.dakar",
+      "enabled": true,
+      "email": "support@bank-dakar.local",
+      "emailVerified": true,
+      "firstName": "Support",
+      "lastName": "Dakar",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["SUPPORT"],
+      "attributes": { "tenant_id": ["BANK_DAKAR"] }
+    },
+    {
+      "username": "auditor",
+      "enabled": true,
+      "email": "auditor@securebank.local",
+      "emailVerified": true,
+      "firstName": "Awa",
+      "lastName": "Auditor",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["AUDITOR"],
+      "attributes": { "tenant_id": ["PLATFORM"] }
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@securebank.local",
+      "emailVerified": true,
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "Password123!", "temporary": false }],
+      "realmRoles": ["ADMIN"],
+      "attributes": { "tenant_id": ["PLATFORM"] }
+    },
+    {
+      "username": "service-account-transaction-service",
+      "enabled": true,
+      "serviceAccountClientId": "transaction-service",
+      "realmRoles": ["SERVICE"]
+    }
+  ]
+}

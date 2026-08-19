@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: secure-banking
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: banking-config
+  namespace: secure-banking
+data:
+  KEYCLOAK_ISSUER: http://keycloak:8080/realms/banking
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  DB_USERNAME: banking
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: banking-secrets
+  namespace: secure-banking
+type: Opaque
+stringData:
+  DB_PASSWORD: change-me
+  TRANSACTION_SERVICE_CLIENT_SECRET: change-me
+  KEYCLOAK_ADMIN_PASSWORD: change-me
+  POSTGRES_PASSWORD: change-me
