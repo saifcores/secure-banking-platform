@@ -1,0 +1,112 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8085/realms/banking}
+  cloud:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 30
+            redis-rate-limiter.burstCapacity: 60
+            key-resolver: "#{@principalKeyResolver}"
+      routes:
+        - id: customer-service
+          uri: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/customers/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: customerService
+                fallbackUri: forward:/fallback/customers
+        - id: account-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/accounts/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: accountService
+                fallbackUri: forward:/fallback/accounts
+        - id: transaction-service
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/transactions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: transactionService
+                fallbackUri: forward:/fallback/transactions
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/audit/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: auditService
+                fallbackUri: forward:/fallback/audit
+        - id: customer-docs
+          uri: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/customers/v3/api-docs/**
+          filters:
+            - RewritePath=/customers/v3/api-docs(?<segment>/?.*), /v3/api-docs$\{segment}
+        - id: account-docs
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/accounts/v3/api-docs/**
+          filters:
+            - RewritePath=/accounts/v3/api-docs(?<segment>/?.*), /v3/api-docs$\{segment}
+        - id: transaction-docs
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/transactions/v3/api-docs/**
+          filters:
+            - RewritePath=/transactions/v3/api-docs(?<segment>/?.*), /v3/api-docs$\{segment}
+        - id: audit-docs
+          uri: ${AUDIT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/audit/v3/api-docs/**
+          filters:
+            - RewritePath=/audit/v3/api-docs(?<segment>/?.*), /v3/api-docs$\{segment}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: customers
+        url: /customers/v3/api-docs
+      - name: accounts
+        url: /accounts/v3/api-docs
+      - name: transactions
+        url: /transactions/v3/api-docs
+      - name: audit
+        url: /audit/v3/api-docs
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} trace=%X{traceId:-} span=%X{spanId:-} tenant=%X{tenantId:-} user=%X{userId:-} service=${spring.application.name} %5p %m%n"
